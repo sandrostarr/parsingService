@@ -1,0 +1,48 @@
+{% extends 'base.html.twig' %}
+
+{% block body %}
+
+    <div class="main-wrapper">
+        <section class="cta-section theme-bg-light py-5">
+            <div class="container text-center">
+                <h2 class="heading">Parser</h2>
+                <div class="intro">Parse news from highload.today</div>
+                <form class="signup-form form-inline justify-content-center pt-3">
+                    <button type="submit" class="btn btn-primary">Parse</button>
+                </form>
+            </div>
+        </section>
+        <section class="blog-list px-3 py-5 p-md-5">
+            <div class="container">
+
+                {% for article in entities %}
+
+                    <div class="item mb-5">
+                        <div class="media">
+                            <img class="mr-3 img-fluid post-thumb d-none d-md-flex"
+                                 src="assets/images/blog/blog-post-thumb-1.jpg" alt="image">
+                            <div class="media-body">
+                                <h3 class="title mb-1">{{ article.title }}</h3>
+                                <div class="meta mb-1"><span class="date">{{ article.publishedAt|date('d.m.Y') }}</span>
+                                </div>
+                                <div class="intro">{{ article.description }}</div>
+
+                                {% if is_granted('ROLE_ADMIN') %}
+                                    <a class="more-link" href="{{ path('article_delete', {id:article.id}) }}">Delete
+                                        article</a>
+                                {% endif %}
+
+                            </div>
+                        </div>
+                    </div>
+
+                {% endfor %}
+
+                {{ knp_pagination_render(entities) }}
+
+            </div>
+        </section>
+
+    </div>
+
+{% endblock %}

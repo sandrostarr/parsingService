@@ -1,3 +1,16 @@
-#index:
-#    path: /
-#    controller: App\Controller\DefaultController::index
+index:
+  path: /
+  controller: App\Controller\NewsController::index
+
+app_login:
+  path: /login
+  controller: App\Controller\LoginController::index
+
+app_logout:
+  path: /logout
+  methods: GET
+
+article_delete:
+  path: /article/{id<\d+>}/delete
+  controller: App\Controller\NewsController::delete
+  methods: GET|POST
