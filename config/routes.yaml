@@ -14,3 +14,8 @@ article_delete:
   path: /article/{id<\d+>}/delete
   controller: App\Controller\NewsController::delete
   methods: GET|POST
+
+article_parse:
+  path: /article/parse
+  controller: App\Controller\NewsController::parse
+  methods: GET|POST

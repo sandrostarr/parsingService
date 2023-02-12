@@ -8,7 +8,7 @@
                 <h2 class="heading">Parser</h2>
                 <div class="intro">Parse news from highload.today</div>
                 <form class="signup-form form-inline justify-content-center pt-3">
-                    <button type="submit" class="btn btn-primary">Parse</button>
+                    <a class="btn btn-primary" href="{{ path('article_parse') }}">Parse</a>
                 </form>
             </div>
         </section>
@@ -20,7 +20,7 @@
                     <div class="item mb-5">
                         <div class="media">
                             <img class="mr-3 img-fluid post-thumb d-none d-md-flex"
-                                 src="assets/images/blog/blog-post-thumb-1.jpg" alt="image">
+                                 src="{{ article.picture }}" alt="image">
                             <div class="media-body">
                                 <h3 class="title mb-1">{{ article.title }}</h3>
                                 <div class="meta mb-1"><span class="date">{{ article.publishedAt|date('d.m.Y') }}</span>

@@ -36,6 +36,25 @@ class ArticleRepository extends ServiceEntityRepository
         }
     }
 
+    /**
+     * @param Article[] $entities
+     * @param bool      $flush
+     *
+     * @return void
+     */
+    public function saveAll(array $entities, bool $flush = false): void
+    {
+        foreach ($entities as $entity) {
+            $this->getEntityManager()->persist($entity);
+        }
+
+        /** TODO много запросов. Надо попробовать сделать это одним */
+
+        if ($flush) {
+            $this->getEntityManager()->flush();
+        }
+    }
+
     public function remove(Article $entity, bool $flush = false): void
     {
         $this->getEntityManager()->remove($entity);
