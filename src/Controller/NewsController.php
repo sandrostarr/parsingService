@@ -95,9 +95,8 @@ class NewsController extends AbstractController
             $this->addFlash('warning', "Some articles are already exists. Created at: $availableNewsCreatedAt");
 
             $news = $this->articleService->removeIntersectArticles($availableNews, $news);
-
-            $this->articleService->createAll($news);
         }
+        $this->articleService->createAll($news);
 
         return $this->redirectToRoute('index');
     }
