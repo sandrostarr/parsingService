@@ -3,20 +3,25 @@
 namespace App\Service;
 
 use App\Entity\Article;
+use App\Factory\ArticleFactory;
 use App\Repository\ArticleRepository;
 use Doctrine\ORM\QueryBuilder;
+use Goutte\Client;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 
 class ArticleService extends AbstractController
 {
     private ArticleRepository $articleRepository;
+    private ArticleFactory    $articleFactory;
 
     /**
      * @param ArticleRepository $articleRepository
+     * @param ArticleFactory    $articleFactory
      */
-    public function __construct(ArticleRepository $articleRepository)
+    public function __construct(ArticleRepository $articleRepository, ArticleFactory $articleFactory)
     {
         $this->articleRepository = $articleRepository;
+        $this->articleFactory    = $articleFactory;
     }
 
     public function read(int $id): ?Article
@@ -86,5 +91,47 @@ class ArticleService extends AbstractController
         }
 
         return $news;
+    }
+
+    public function parse(string $url)
+    {
+        $httpClient = new Client();
+        $response   = $httpClient->request('GET', $url);
+
+        $titles           = $response->evaluate('//div[@class="lenta-item"]//a//h2');
+        $descriptions     = $response->evaluate('//div[@class="lenta-item"]/p');
+        $images           = $response->evaluate('//div[@class="lenta-item"]//a//div[@class="lenta-image"]/noscript/img/@src');
+        $publishedAtDates = $response->evaluate('//div[@class="lenta-item"]//span[@class="meta-datetime"]');
+
+        $news       = [];
+        $newsTitles = [];
+        foreach ($titles as $key => $title) {
+            $title           = $title->textContent;
+            $description     = $descriptions->getNode($key)->textContent;
+            $image           = $images->getNode($key)->textContent;
+            $publishedAtDate = $publishedAtDates->getNode($key)->textContent;
+
+            $article = $this->articleFactory->makeArticle(
+                $title,
+                $description,
+                $image,
+                $publishedAtDate
+            );
+
+            $news[]       = $article;
+            $newsTitles[] = $title;
+        }
+
+        $availableNews = $this->findBy(['title' => $newsTitles]);
+
+        if ($availableNews) {
+            $availableNewsCreatedAt = $this->getAvailableNewsCreatedAt($availableNews);
+
+            $this->addFlash('warning', "Some articles are already exists. Created at: $availableNewsCreatedAt");
+
+            $news = $this->removeIntersectArticles($availableNews, $news);
+        }
+
+        $this->createAll($news);
     }
 }

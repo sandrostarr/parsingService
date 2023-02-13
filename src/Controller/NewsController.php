@@ -3,10 +3,10 @@
 namespace App\Controller;
 
 use App\Enum\Url;
-use App\Factory\ArticleFactory;
 use App\Service\ArticleService;
-use Goutte\Client;
 use Knp\Component\Pager\PaginatorInterface;
+use PhpAmqpLib\Connection\AMQPStreamConnection;
+use PhpAmqpLib\Message\AMQPMessage;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -16,16 +16,12 @@ class NewsController extends AbstractController
 {
     private ArticleService $articleService;
 
-    private ArticleFactory $articleFactory;
-
     /**
      * @param ArticleService $articleService
-     * @param ArticleFactory $articleFactory
      */
-    public function __construct(ArticleService $articleService, ArticleFactory $articleFactory)
+    public function __construct(ArticleService $articleService)
     {
         $this->articleService = $articleService;
-        $this->articleFactory = $articleFactory;
     }
 
     public function index(Request $request, PaginatorInterface $paginator): Response
@@ -60,43 +56,20 @@ class NewsController extends AbstractController
 
     public function parse(): Response
     {
-        $httpClient = new Client();
-        $response   = $httpClient->request('GET', Url::HIGHLOAD_TODAY);
+        $connection = new AMQPStreamConnection(
+            getenv('RABBITMQ_HOST'),
+            getenv('RABBITMQ_PORT'),
+            getenv('RABBITMQ_USER'),
+            getenv('RABBITMQ_PASSWORD'));
+        $channel    = $connection->channel();
 
-        $titles           = $response->evaluate('//div[@class="lenta-item"]//a//h2');
-        $descriptions     = $response->evaluate('//div[@class="lenta-item"]/p');
-        $images           = $response->evaluate('//div[@class="lenta-item"]//a//div[@class="lenta-image"]/noscript/img/@src');
-        $publishedAtDates = $response->evaluate('//div[@class="lenta-item"]//span[@class="meta-datetime"]');
+        $channel->queue_declare('parse', false, false, false, false);
 
-        $news       = [];
-        $newsTitles = [];
-        foreach ($titles as $key => $title) {
-            $title           = $title->textContent;
-            $description     = $descriptions->getNode($key)->textContent;
-            $image           = $images->getNode($key)->textContent;
-            $publishedAtDate = $publishedAtDates->getNode($key)->textContent;
+        $msg = new AMQPMessage(Url::HIGHLOAD_TODAY);
+        $channel->basic_publish($msg, '', 'parse');
 
-            $article = $this->articleFactory->makeArticle(
-                $title,
-                $description,
-                $image,
-                $publishedAtDate
-            );
-
-            $news[]       = $article;
-            $newsTitles[] = $title;
-        }
-
-        $availableNews = $this->articleService->findBy(['title' => $newsTitles]);
-
-        if ($availableNews) {
-            $availableNewsCreatedAt = $this->articleService->getAvailableNewsCreatedAt($availableNews);
-
-            $this->addFlash('warning', "Some articles are already exists. Created at: $availableNewsCreatedAt");
-
-            $news = $this->articleService->removeIntersectArticles($availableNews, $news);
-        }
-        $this->articleService->createAll($news);
+        $channel->close();
+        $connection->close();
 
         return $this->redirectToRoute('index');
     }
